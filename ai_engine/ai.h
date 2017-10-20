@@ -14,7 +14,7 @@
 /* some constant */
 const int EMPTY = 0;
 const int BLACK = 1;
-const int WHITE = 2；
+const int WHITE = 2;
 const int BOARD_FULL = 3;
 const int BOARD_SIZE = 15;
 
@@ -32,6 +32,7 @@ public:
 	int ** get_board(){return board_look;}
 	int has_winner(); /*0: no winner;	1: BLACK;	2: WHITE;	3: full board */
 	bool add_a_stone(int color, int x, int y);
+	void test_show();
 };
 
 /* the ai class */
@@ -41,7 +42,8 @@ private:
 	int color;
 public:
 	board current_board;
-	ai();
-	~ai();
+	ai(int init_color);
+	~ai(){}
 	void next_step();
+
 };
