@@ -18,6 +18,12 @@ const int WHITE = 2;
 const int BOARD_FULL = 3;
 const int BOARD_SIZE = 15;
 
+/* some constant for evaluation */
+const int LIVE[5] = {0,10,100,1000,10000};
+const int DEATH[5] = {0,1,10,100,1000};
+const int GET_FIVE = 5;
+const int NO_VALUE = 0;
+
 /* the board class */
 class board
 {
@@ -32,6 +38,7 @@ public:
 	int ** get_board(){return board_look;}
 	int has_winner(); /*0: no winner;	1: BLACK;	2: WHITE;	3: full board */
 	bool add_a_stone(int color, int x, int y);
+	bool in_board(int x,int y);
 	void test_show();
 };
 
@@ -40,10 +47,11 @@ class ai
 {
 private:
 	int color;
+	int search_depth;
+	
 public:
-	board current_board;
-	ai(int init_color);
+	ai(int init_color, int init_search_depth=10);
 	~ai(){}
-	void next_step();
-
+	void next_step(board &currnet_board);
+	int board_evaluation(int **board_look);
 };

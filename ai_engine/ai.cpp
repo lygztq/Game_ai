@@ -2,7 +2,7 @@
 * @Author: lygztq
 * @Date:   2017-10-20 11:30:12
 * @Last Modified by:   lygztq
-* @Last Modified time: 2017-10-20 13:38:49
+* @Last Modified time: 2017-10-20 20:06:14
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +55,11 @@ int board::has_winner()
 	else return EMPTY;
 }
 
+inline bool board::in_board(int x, int y)
+{
+	return (x>0 && x<=BOARD_SIZE && y>0 && y<=BOARD_SIZE);
+}
+
 bool board::has_five_line(int color)
 {
 	/* judge if the player with (int)color already has five stone in a line */
@@ -69,11 +74,13 @@ bool board::has_five_line(int color)
 			for(int i=0;i<8;++i)
 			{
 				int tx = x + dx[i], ty = y + dy[i];
-				while(board_look[tx][ty]==color)
-				{
-					++length;
-					tx += dx[i]; ty += dy[i];
-				}
+				if(in_board(tx,ty))
+					while(board_look[tx][ty]==color)
+					{
+						++length;
+						tx += dx[i]; ty += dy[i];
+						if(!in_board(tx, ty)) break;
+					}
 				if (i%2)
 				{
 					++length;
@@ -97,19 +104,20 @@ void board::test_show()
 }
 
 /* ai class */
-ai::ai(int init_color)
+inline ai::ai(int init_color, int init_search_depth)
 {
 	color = init_color;
+	search_depth = init_search_depth;
 }
 
-void ai::next_step()
+void ai::next_step(board &current_board)
 {
 	/* decide the next step */
 	int nx = random(BOARD_SIZE);
 	int ny = random(BOARD_SIZE);
-	int ** cboard = current_board.get_board();
+	int **board_grid = current_board.get_board();
 
-	while(cboard[nx][ny]!=EMPTY)
+	while(board_grid[nx][ny]!=EMPTY)
 	{
 		++nx;
 		if(nx>BOARD_SIZE)
@@ -130,15 +138,16 @@ int main(void)
 	srand((unsigned)time(NULL));
 	int your_x, your_y;
 	ai board_ai(BLACK);
-	int state = board_ai.current_board.has_winner();
+	board current_board;
+	int state = current_board.has_winner();
 	while(state==0 || state==3)
 	{
-		board_ai.next_step();
-		board_ai.current_board.test_show();
+		board_ai.next_step(current_board);
+		current_board.test_show();
 		scanf("%d %d",&your_x,&your_y);
-		board_ai.current_board.add_a_stone(WHITE,your_x,your_y);
-		board_ai.current_board.test_show();
-		state = board_ai.current_board.has_winner();
+		current_board.add_a_stone(WHITE,your_x,your_y);
+		current_board.test_show();
+		state = current_board.has_winner();
 	}
 
 	printf("%d\n", state);
