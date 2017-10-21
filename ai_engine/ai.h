@@ -29,6 +29,14 @@ const int INCREASE = 1;
 const int DECREASE = -1;
 const int NO_MOVE = 0;
 
+struct bbox
+{
+	int x_start;
+	int y_start;
+	int x_end;
+	int y_end;
+};
+
 /* the board class */
 class board
 {
@@ -36,14 +44,21 @@ private:
 	int ** board_look;
 	int empty_number;
 
+
 	bool has_five_line(int color);
 public:
+	bbox search_grid_domain;
+
 	board();
 	~board();
+	board(const board &b);
+	board(int ** b);
+	board & operator=(const board &b);
 	int ** get_board(){return board_look;}
 	int has_winner(); /*0: no winner;	1: BLACK;	2: WHITE;	3: full board */
 	bool add_a_stone(int color, int x, int y);
 	bool in_board(int x,int y);
+	bool is_empty(int x, int y){return board_look[x][y]==EMPTY;}
 	void test_show();
 };
 
@@ -55,8 +70,10 @@ private:
 	int search_depth;
 
 	int line_evaluation(int **board_look, int start_x, int start_y, int end_x, int end_y, int x_step, int y_step);
+	int max_value(board &b, int &alpha, int &beta, int &next_x, int &next_y, int depth);
+	int min_value(board &b, int &alpha, int &beta, int &next_x, int &next_y, int depth);
 public:
-	ai(int init_color, int init_search_depth=10);
+	ai(int init_color, int init_search_depth=5);
 	~ai(){}
 	void next_step(board &currnet_board);
 	int board_evaluation(int **board_look);

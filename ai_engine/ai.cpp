@@ -2,19 +2,29 @@
 * @Author: lygztq
 * @Date:   2017-10-20 11:30:12
 * @Last Modified by:   lygztq
-* @Last Modified time: 2017-10-21 16:55:57
+* @Last Modified time: 2017-10-21 21:03:13
 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <cstring>
-#include <time.h>
+#include <limits.h>
 // for test begin
+#include <time.h>
 #include <random>
 #include <windows.h>
 // for test end
 #include "ai.h"
 inline int random(int x){return rand()%x + 1;}
 inline int different_color(int color){return 3 - color;}
+inline int abs(int x)
+{
+	if(x<0) return ~x+1;
+	return x; 
+}
+inline bool is_nab(int x1, int y1, int x2, int y2)
+{
+	return abs(x1-x2)+abs(y1-y2)<=2;
+}
 
 /* board class */
 board::board()
@@ -26,8 +36,96 @@ board::board()
 		for(auto j=1;j<=BOARD_SIZE;++j)
 			board_look[i][j] = 0;
 	}
+	search_grid_domain.x_start = BOARD_SIZE/2;
+	search_grid_domain.y_start = BOARD_SIZE/2;
+	search_grid_domain.x_end = BOARD_SIZE/2+1;
+	search_grid_domain.y_end = BOARD_SIZE/2+1;
 
 	empty_number = BOARD_SIZE * BOARD_SIZE;
+}
+
+board::board(int **b)
+{
+	empty_number = BOARD_SIZE * BOARD_SIZE;
+	board_look = new int * [BOARD_SIZE+1];
+	search_grid_domain.x_start = BOARD_SIZE/2;
+	search_grid_domain.y_start = BOARD_SIZE/2;
+	search_grid_domain.x_end = BOARD_SIZE/2+1;
+	search_grid_domain.y_end = BOARD_SIZE/2+1;
+	
+	if(b==NULL)
+		for(auto i=1;i<=BOARD_SIZE;++i)
+		{
+			board_look[i] = new int [BOARD_SIZE+1];
+			for(auto j=1;j<=BOARD_SIZE;++j)
+				board_look[i][j] = 0;
+		}
+	else
+		for(auto i=1;i<=BOARD_SIZE;++i)
+		{
+			board_look[i] = new int [BOARD_SIZE+1];
+			for(auto j=1;j<=BOARD_SIZE;++j)
+			{
+				board_look[i][j] = b[i][j];
+				if(b[i][j]!=0)
+				{
+					--empty_number;
+					if(i<=search_grid_domain.x_start)
+						search_grid_domain.x_start = (i>3)?(i-2):1;
+					else if(i>=search_grid_domain.x_end)
+						search_grid_domain.x_end = (i+2<BOARD_SIZE)?(i+2):BOARD_SIZE;
+					if(j<=search_grid_domain.y_start)
+						search_grid_domain.y_start = (j>3)?(j-2):1;
+					else if(j>=search_grid_domain.y_end)
+						search_grid_domain.y_end = (j+2<BOARD_SIZE)?(j+2):BOARD_SIZE;
+				}
+			}
+		}
+}
+
+board::board(const board &b)
+{
+	board_look = new int *[BOARD_SIZE+1];
+	for(auto i=1;i<=BOARD_SIZE;++i)
+	{
+		board_look[i] = new int [BOARD_SIZE+1];
+		for(auto j=1;j<=BOARD_SIZE;++j)
+			board_look[i][j] = b.board_look[i][j];
+	}
+	search_grid_domain = b.search_grid_domain;
+	empty_number = b.empty_number;
+}
+
+board & board::operator=(const board &b)
+{
+	if(this == &b) return *this;
+
+
+	if(board_look==NULL)
+	{
+		search_grid_domain.x_start = BOARD_SIZE/2;
+		search_grid_domain.y_start = BOARD_SIZE/2;
+		search_grid_domain.x_end = BOARD_SIZE/2+1;
+		search_grid_domain.y_end = BOARD_SIZE/2+1;
+
+		board_look = new int *[BOARD_SIZE+1];
+		for(auto i=1;i<=BOARD_SIZE;++i)
+		{
+			board_look[i] = new int [BOARD_SIZE+1];
+			for(auto j=1;j<=BOARD_SIZE;++j)
+				board_look[i][j] = b.board_look[i][j];
+		}
+		empty_number = BOARD_SIZE * BOARD_SIZE;
+	}
+	else
+	{
+		for(auto i=1;i<=BOARD_SIZE;++i)
+			for(auto j=1;j<=BOARD_SIZE;++j)
+				board_look[i][j] = b.board_look[i][j];
+		empty_number = b.empty_number;
+		search_grid_domain = b.search_grid_domain;
+	}
+	return *this;
 }
 
 board::~board()
@@ -45,6 +143,16 @@ bool board::add_a_stone(int color, int x, int y)
 		return false;
 	}
 	board_look[x][y] = color;
+	--empty_number; 
+
+	if(x<=search_grid_domain.x_start)
+		search_grid_domain.x_start = (x>3)?(x-2):1;
+	else if(x>=search_grid_domain.x_end)
+		search_grid_domain.x_end = (x+2<BOARD_SIZE)?(x+2):BOARD_SIZE;
+	if(y<=search_grid_domain.y_start)
+		search_grid_domain.y_start = (y>3)?(y-2):1;
+	else if(y>=search_grid_domain.y_end)
+		search_grid_domain.y_end = (y+2<BOARD_SIZE)?(y+2):BOARD_SIZE;
 	return true;
 }
 
@@ -141,6 +249,7 @@ int ai::line_evaluation(int **board_look,
 				++empty_end;
 
 		// get the length and right end of the shape
+		bool over_boundary = false; 
 		tmp_x = ptr_x; 
 		tmp_y = ptr_y;
 		while(board_look[tmp_x][tmp_y]==color)
@@ -153,9 +262,10 @@ int ai::line_evaluation(int **board_look,
 				else if (board_look[tmp_x][tmp_y]==EMPTY) ++empty_end;
 				break;
 			}
+			over_boundary =  (tmp_x==end_x+x_step && tmp_y==end_y+y_step);
+			if(over_boundary) break;
 		}
 		// check if over boundary.
-		bool over_boundary = (tmp_x==end_x+x_step && tmp_y==end_y+y_step);
 		if(!over_boundary&&(tmp_x!=end_x || tmp_y!=end_y))
 		{
 			if (board_look[tmp_x][tmp_y]==EMPTY) ++empty_end;
@@ -195,30 +305,74 @@ int ai::board_evaluation(int **board_look)
 	return evaluation_sum;
 }
 
+int ai::max_value(board &b, int &alpha, int &beta, int &next_x, int &next_y, int depth)
+{
+	if(depth==search_depth)
+		return board_evaluation(b.get_board());
+
+	bbox search_domain = b.search_grid_domain;
+
+	int value = INT_MIN;
+	for(int x=search_domain.x_start;x<=search_domain.x_end;++x)
+		for(int y=search_domain.y_start;y<=search_domain.y_end;++y)
+		{
+			if(!b.is_empty(x,y)) continue;
+			board next_board(b);
+			next_board.add_a_stone(color,x,y);
+			int nnx,nny;
+			int next_value = min_value(next_board, alpha, beta, nnx, nny, depth+1);
+			if(value<next_value)
+			{
+				value = next_value;
+				next_x = x; next_y = y;
+			}
+			if(beta<=value) return value;
+			if(alpha<value) alpha = value;
+		}
+	return value;
+}
+
+int ai::min_value(board &b, int &alpha, int &beta, int &next_x, int &next_y, int depth)
+{
+	if(depth==search_depth)
+		return board_evaluation(b.get_board());
+
+	bbox search_domain = b.search_grid_domain;
+	int value = INT_MAX;
+	for(int x=search_domain.x_start;x<=search_domain.x_end;++x)
+		for(int y=search_domain.y_start;y<=search_domain.y_end;++y)
+		{
+			if(!b.is_empty(x,y)) continue;
+			board next_board(b);
+			next_board.add_a_stone(color,x,y);
+			int nnx,nny;
+			int next_value = max_value(next_board, alpha, beta, nnx, nny, depth+1);
+			if(value>next_value)
+			{
+				value = next_value;
+				next_x = x; next_y = y;
+			}
+			if(alpha>=value) return value;
+			if(beta>value) beta = value;
+		}
+	return value;
+}
+
 void ai::next_step(board &current_board)
 {
 	/* decide the next step */
-	int nx = random(BOARD_SIZE);
-	int ny = random(BOARD_SIZE);
-	ny=14;
-	nx = 1;
-	int **board_grid = current_board.get_board();
+	int nx, ny;
 
-	while(board_grid[nx][ny]!=EMPTY)
-	{
-		++nx;
-		if(nx>BOARD_SIZE)
-		{
-			++ny;
-			nx = 1;
-		}
-		if(ny>BOARD_SIZE)
-			ny = 1;
-	}
+	// decide next step
+	int alpha = INT_MIN, beta = INT_MAX;
+	int evaluation_value = max_value(current_board, alpha, beta, nx, ny, 0);
+	
+	// next step
 	current_board.add_a_stone(color,nx,ny);
+
+	// some test
 	printf("%d %d %d\n",nx,ny,color);
-	int value =  board_evaluation(current_board.get_board());
-	printf("board_evaluation: %d\n", value);
+	printf("board_evaluation: %d\n", board_evaluation(current_board.get_board()));
 }
 
 // for test main
@@ -232,6 +386,8 @@ int main(void)
 	while(state==0 || state==3)
 	{
 		board_ai.next_step(current_board);
+		state = current_board.has_winner();
+		if(state==1 || state==2) break;
 		current_board.test_show();
 		scanf("%d %d",&your_x,&your_y);
 		current_board.add_a_stone(WHITE,your_x,your_y);
