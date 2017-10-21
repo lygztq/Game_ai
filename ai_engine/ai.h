@@ -18,11 +18,16 @@ const int WHITE = 2;
 const int BOARD_FULL = 3;
 const int BOARD_SIZE = 15;
 
-/* some constant for evaluation */
+/* some constant for evaluation OR shape names and values*/
 const int LIVE[5] = {0,10,100,1000,10000};
 const int DEATH[5] = {0,1,10,100,1000};
-const int GET_FIVE = 5;
+const int GET_FIVE = 100000;
 const int NO_VALUE = 0;
+
+/* Constant for direction */
+const int INCREASE = 1;
+const int DECREASE = -1;
+const int NO_MOVE = 0;
 
 /* the board class */
 class board
@@ -48,7 +53,8 @@ class ai
 private:
 	int color;
 	int search_depth;
-	
+
+	int line_evaluation(int **board_look, int start_x, int start_y, int end_x, int end_y, int x_step, int y_step);
 public:
 	ai(int init_color, int init_search_depth=10);
 	~ai(){}

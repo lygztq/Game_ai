@@ -2,7 +2,7 @@
 * @Author: lygztq
 * @Date:   2017-10-20 11:30:12
 * @Last Modified by:   lygztq
-* @Last Modified time: 2017-10-20 20:06:14
+* @Last Modified time: 2017-10-21 16:55:57
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +13,8 @@
 #include <windows.h>
 // for test end
 #include "ai.h"
-inline int random(int x){return rand()%x +1;}
+inline int random(int x){return rand()%x + 1;}
+inline int different_color(int color){return 3 - color;}
 
 /* board class */
 board::board()
@@ -110,11 +111,97 @@ inline ai::ai(int init_color, int init_search_depth)
 	search_depth = init_search_depth;
 }
 
+int ai::line_evaluation(int **board_look, 
+						int start_x, 
+						int start_y, 
+						int end_x, 
+						int end_y, 
+						int x_step, 
+						int y_step)
+{
+	int ptr_x = start_x, ptr_y = start_y; // current position
+	int tmp_x, tmp_y;
+	int length;
+	int empty_end;
+	int evaluate_value_sum = 0;
+	while(ptr_x!=end_x || ptr_y!=end_y)
+	{
+		length = 0;
+		empty_end = 0;
+		// get the first stone with ai's color
+		while(board_look[ptr_x][ptr_y]!=color && (ptr_x!=end_x || ptr_y!=end_y))
+		{
+			ptr_x += x_step; 
+			ptr_y += y_step;
+		}
+		
+		// get the left end of the shape
+		if(ptr_x!=start_x || ptr_y!=start_y)
+			if(board_look[ptr_x-x_step][ptr_y-y_step]==EMPTY)
+				++empty_end;
+
+		// get the length and right end of the shape
+		tmp_x = ptr_x; 
+		tmp_y = ptr_y;
+		while(board_look[tmp_x][tmp_y]==color)
+		{
+			++length;
+			tmp_x += x_step; tmp_y += y_step;
+			if(tmp_x==end_x && tmp_y==end_y)
+			{
+				if(board_look[tmp_x][tmp_y]==color) ++length;
+				else if (board_look[tmp_x][tmp_y]==EMPTY) ++empty_end;
+				break;
+			}
+		}
+		// check if over boundary.
+		bool over_boundary = (tmp_x==end_x+x_step && tmp_y==end_y+y_step);
+		if(!over_boundary&&(tmp_x!=end_x || tmp_y!=end_y))
+		{
+			if (board_look[tmp_x][tmp_y]==EMPTY) ++empty_end;
+			ptr_x = tmp_x + x_step; ptr_y = tmp_y + y_step;
+		}
+		else {ptr_x = tmp_x; ptr_y = tmp_y;}
+
+		if(length>=5) evaluate_value_sum += GET_FIVE;
+		if(empty_end==1) evaluate_value_sum += DEATH[length];
+		else if(empty_end==2) evaluate_value_sum += LIVE[length];
+		if(over_boundary) break;
+	}
+	return evaluate_value_sum;
+}
+
+int ai::board_evaluation(int **board_look)
+{
+	int evaluation_sum = 0;
+	// x-dim
+	for(int x=1;x<=BOARD_SIZE;++x)
+		evaluation_sum += line_evaluation(board_look, x, 1, x, BOARD_SIZE, NO_MOVE, INCREASE);
+	// y-dim
+	for(int y=1;y<=BOARD_SIZE;++y)
+		evaluation_sum += line_evaluation(board_look, 1, y, BOARD_SIZE, y, INCREASE, NO_MOVE);
+	// diagonal
+	for(int x=1;x<=BOARD_SIZE;++x)
+	{
+		evaluation_sum += line_evaluation(board_look, x, 1, 1, x, DECREASE, INCREASE);
+		evaluation_sum += line_evaluation(board_look, x, 1, BOARD_SIZE, BOARD_SIZE+1-x, INCREASE, INCREASE);
+	}
+
+	for(int y=2;y<=BOARD_SIZE;++y)
+	{
+		evaluation_sum += line_evaluation(board_look, BOARD_SIZE, y, y, BOARD_SIZE, DECREASE, INCREASE);
+		evaluation_sum += line_evaluation(board_look, 1, y, BOARD_SIZE+1-y, BOARD_SIZE, INCREASE, INCREASE);
+	}
+	return evaluation_sum;
+}
+
 void ai::next_step(board &current_board)
 {
 	/* decide the next step */
 	int nx = random(BOARD_SIZE);
 	int ny = random(BOARD_SIZE);
+	ny=14;
+	nx = 1;
 	int **board_grid = current_board.get_board();
 
 	while(board_grid[nx][ny]!=EMPTY)
@@ -130,6 +217,8 @@ void ai::next_step(board &current_board)
 	}
 	current_board.add_a_stone(color,nx,ny);
 	printf("%d %d %d\n",nx,ny,color);
+	int value =  board_evaluation(current_board.get_board());
+	printf("board_evaluation: %d\n", value);
 }
 
 // for test main
