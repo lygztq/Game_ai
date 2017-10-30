@@ -1,0 +1,10 @@
+# depslib dependency file v1.0
+1504873448 source:c:\users\lygztq\desktop\2048\2048\main.cpp
+	<stdio.h>
+	<random>
+	<time.h>
+	<windows.h>
+	<cstring>
+	<vector>
+	<algorithm>
+
