@@ -1,1 +1,1 @@
-# GoBang AI #
+# Game AI #
