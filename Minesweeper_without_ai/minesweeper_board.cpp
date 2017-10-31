@@ -143,20 +143,20 @@ void minesweeper_board::test_show(int mode)
 }
 
 // test main
-// int main(void)
-// {
-// 	srand((int)time(0));
-// 	minesweeper_board board('P');
-// 	board.test_show(0);
+ int main(void)
+ {
+ 	srand((int)time(0));
+ 	minesweeper_board board(20,20,50);
+ 	board.test_show(0);
 
-// 	for(int i=0;i<100;++i)
-// 	{
-// 		int nx,ny;
-// 		scanf("%d %d",&nx,&ny);
-// 		board.explore(nx,ny);
-// 		board.test_show(0);
-// 	}
+ 	for(int i=0;i<100;++i)
+ 	{
+ 		int nx,ny;
+ 		scanf("%d %d",&nx,&ny);
+ 		board.explore(nx,ny);
+ 		board.test_show(0);
+ 	}
 
-// 	system("PAUSE");
-// 	return 0;
-// }
+ 	system("PAUSE");
+ 	return 0;
+ }
